@@ -40,13 +40,6 @@ export function filterServiceOrders(
   filters: DashboardFilters
 ): ServiceOrder[] {
   return orders.filter(order => {
-    const dataFechamento = parseDate(order.DATA_FECHAMENTO);
-    
-    // Se não conseguir parsear a data, pula o registro
-    if (!dataFechamento || isNaN(dataFechamento.getTime())) {
-      return false;
-    }
-
     const matchBairro =
       !filters.bairro || order.BAIRRO === filters.bairro;
 
@@ -62,6 +55,14 @@ export function filterServiceOrders(
     // Se não há filtros de data, só verifica os outros filtros
     if (!filters.dataInicio && !filters.dataFim) {
       return matchBairro && matchCidade && matchTecnico && matchCategoria;
+    }
+
+    // Só aplica filtros de data se eles existirem
+    const dataFechamento = parseDate(order.DATA_FECHAMENTO);
+    
+    // Se não conseguir parsear a data MAS há filtros de data, rejeita o registro
+    if (!dataFechamento || isNaN(dataFechamento.getTime())) {
+      return false;
     }
 
     // Normalizar as datas para comparação (apenas a data, sem horário)
