@@ -39,6 +39,14 @@ export function filterServiceOrders(
   orders: ServiceOrder[],
   filters: DashboardFilters
 ): ServiceOrder[] {
+  // Debug dos filtros aplicados
+  if (filters.dataInicio || filters.dataFim) {
+    console.log('=== FILTROS DE DATA APLICADOS ===');
+    console.log('DataInicio:', filters.dataInicio);
+    console.log('DataFim:', filters.dataFim);
+    console.log('Total de ordens:', orders.length);
+  }
+
   return orders.filter(order => {
     const matchBairro =
       !filters.bairro || order.BAIRRO === filters.bairro;
@@ -74,6 +82,16 @@ export function filterServiceOrders(
     if (filters.dataInicio) {
       const inicioNormalized = new Date(filters.dataInicio.getFullYear(), filters.dataInicio.getMonth(), filters.dataInicio.getDate());
       matchDataInicio = fechamentoNormalized >= inicioNormalized;
+      
+      // Debug da primeira ordem para ver as datas
+      if (order.COD_SUPORTE === orders[0].COD_SUPORTE) {
+        console.log('Primeira ordem - Debug:');
+        console.log('  Data original:', order.DATA_FECHAMENTO);
+        console.log('  Data parseada:', dataFechamento);
+        console.log('  Data normalizada:', fechamentoNormalized);
+        console.log('  Início normalizado:', inicioNormalized);
+        console.log('  Match início:', matchDataInicio);
+      }
     }
     
     if (filters.dataFim) {
