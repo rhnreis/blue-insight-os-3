@@ -43,18 +43,18 @@ export function filterServiceOrders(orders: ServiceOrder[], filters: DashboardFi
     if (filters.tecnico && order.TECNICO !== filters.tecnico) return false;
     
     if (filters.dataInicio || filters.dataFim) {
-      const dataAbertura = parseDate(order.DATA_ABERTURA);
-      if (!dataAbertura) return false;
+      const dataFechamento = parseDate(order.DATA_FECHAMENTO);
+      if (!dataFechamento) return false;
       
       if (filters.dataInicio && filters.dataFim) {
-        return isWithinInterval(dataAbertura, {
+        return isWithinInterval(dataFechamento, {
           start: filters.dataInicio,
           end: filters.dataFim
         });
       } else if (filters.dataInicio) {
-        return dataAbertura >= filters.dataInicio;
+        return dataFechamento >= filters.dataInicio;
       } else if (filters.dataFim) {
-        return dataAbertura <= filters.dataFim;
+        return dataFechamento <= filters.dataFim;
       }
     }
     
@@ -80,8 +80,8 @@ export function analyzeRecalls(orders: ServiceOrder[]): ClientRecall[] {
       nomeCliente: ordens[0].NOME_CLIENTE,
       totalOrdens: ordens.length,
       ordens: ordens.sort((a, b) => {
-        const dateA = parseDate(a.DATA_ABERTURA);
-        const dateB = parseDate(b.DATA_ABERTURA);
+        const dateA = parseDate(a.DATA_FECHAMENTO);
+        const dateB = parseDate(b.DATA_FECHAMENTO);
         if (!dateA || !dateB) return 0;
         return dateA.getTime() - dateB.getTime();
       })
@@ -196,7 +196,7 @@ export function analyzeRecallsByDate(recalls: ClientRecall[]): { data: string; r
   
   recalls.forEach(recall => {
     recall.ordens.forEach(ordem => {
-      const data = parseDate(ordem.DATA_ABERTURA);
+      const data = parseDate(ordem.DATA_FECHAMENTO);
       if (data && !isNaN(data.getTime())) {
         const dateKey = data.toISOString().split('T')[0]; // YYYY-MM-DD
         dateMap.set(dateKey, (dateMap.get(dateKey) || 0) + 1);
@@ -242,4 +242,19 @@ export function generateInsights(kpis: DashboardKPIs, recalls: ClientRecall[], c
   }
   
   return insights;
+}
+
+export function getAvailableDates(orders: ServiceOrder[]): Date[] {
+  const dates = new Set<string>();
+  
+  orders.forEach(order => {
+    const fechamento = parseDate(order.DATA_FECHAMENTO);
+    if (fechamento && !isNaN(fechamento.getTime())) {
+      dates.add(fechamento.toISOString().split('T')[0]);
+    }
+  });
+  
+  return Array.from(dates)
+    .sort()
+    .map(dateStr => new Date(dateStr));
 }

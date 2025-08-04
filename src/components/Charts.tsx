@@ -41,6 +41,13 @@ const Charts: React.FC<ChartsProps> = ({ recalls, technicians, categories }) => 
 
   // Dados para gráfico de linha - rechamadas por dia
   const dailyRecallsData = analyzeRecallsByDate(recalls);
+  
+  console.log('Charts Debug:', {
+    recallsCount: recalls.length,
+    categoriesCount: categories.length,
+    categoryBarData,
+    dailyRecallsData
+  });
 
   // Cores para os gráficos
   const colors = ['#0052CC', '#0066FF', '#3366FF', '#4D79FF', '#668CFF', '#809FFF', '#99B3FF', '#B3C6FF', '#CCD9FF', '#E6F0FF'];

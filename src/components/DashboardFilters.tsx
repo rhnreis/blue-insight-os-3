@@ -1,13 +1,11 @@
 import React from 'react';
-import { CalendarDays, Filter, X } from 'lucide-react';
+import { Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { ServiceOrder, DashboardFilters as FilterType } from '@/types/dashboard';
+import { getAvailableDates } from '@/utils/dataAnalysis';
+import EnhancedDatePicker from './EnhancedDatePicker';
 
 interface DashboardFiltersProps {
   orders: ServiceOrder[];
@@ -24,6 +22,7 @@ const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   const uniqueCidades = [...new Set(orders.map(o => o.CIDADE).filter(Boolean))].sort();
   const uniqueCategorias = [...new Set(orders.map(o => o.CATEGORIA).filter(Boolean))].sort();
   const uniqueTecnicos = [...new Set(orders.map(o => o.TECNICO).filter(Boolean))].sort();
+  const availableDates = getAvailableDates(orders);
 
   const updateFilter = (key: keyof FilterType, value: any) => {
     const cleanValue = value === 'all' ? undefined : value;
@@ -145,58 +144,24 @@ const DashboardFilters: React.FC<DashboardFiltersProps> = ({
 
           {/* Filtro de Data Início */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Data Início</label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-left font-normal"
-                >
-                  <CalendarDays className="mr-2 h-4 w-4" />
-                  {filters.dataInicio ? (
-                    format(filters.dataInicio, "dd/MM/yyyy", { locale: ptBR })
-                  ) : (
-                    <span>Selecionar data</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={filters.dataInicio}
-                  onSelect={(date) => updateFilter('dataInicio', date)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <label className="text-sm font-medium">Data Início (Fechamento)</label>
+            <EnhancedDatePicker
+              value={filters.dataInicio}
+              onChange={(date) => updateFilter('dataInicio', date)}
+              placeholder="Selecionar data início"
+              availableDates={availableDates}
+            />
           </div>
 
           {/* Filtro de Data Fim */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Data Fim</label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-left font-normal"
-                >
-                  <CalendarDays className="mr-2 h-4 w-4" />
-                  {filters.dataFim ? (
-                    format(filters.dataFim, "dd/MM/yyyy", { locale: ptBR })
-                  ) : (
-                    <span>Selecionar data</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={filters.dataFim}
-                  onSelect={(date) => updateFilter('dataFim', date)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <label className="text-sm font-medium">Data Fim (Fechamento)</label>
+            <EnhancedDatePicker
+              value={filters.dataFim}
+              onChange={(date) => updateFilter('dataFim', date)}
+              placeholder="Selecionar data fim"
+              availableDates={availableDates}
+            />
           </div>
         </div>
       </CardContent>
