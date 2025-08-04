@@ -36,7 +36,16 @@ export function parseDate(dateString: string): Date | null {
 }
 
 export function filterServiceOrders(orders: ServiceOrder[], filters: DashboardFilters): ServiceOrder[] {
-  return orders.filter(order => {
+  console.log('Filter Debug - Input:', {
+    totalOrders: orders.length,
+    filters,
+    sampleDates: orders.slice(0, 3).map(o => ({
+      fechamento: o.DATA_FECHAMENTO,
+      parsed: parseDate(o.DATA_FECHAMENTO)
+    }))
+  });
+
+  const filtered = orders.filter(order => {
     if (filters.bairro && order.BAIRRO !== filters.bairro) return false;
     if (filters.cidade && order.CIDADE !== filters.cidade) return false;
     if (filters.categoria && order.CATEGORIA !== filters.categoria) return false;
@@ -44,22 +53,52 @@ export function filterServiceOrders(orders: ServiceOrder[], filters: DashboardFi
     
     if (filters.dataInicio || filters.dataFim) {
       const dataFechamento = parseDate(order.DATA_FECHAMENTO);
-      if (!dataFechamento) return false;
+      
+      console.log('Date filter check:', {
+        orderFechamento: order.DATA_FECHAMENTO,
+        parsedDate: dataFechamento,
+        filterStart: filters.dataInicio,
+        filterEnd: filters.dataFim,
+        isValidDate: dataFechamento && !isNaN(dataFechamento.getTime())
+      });
+      
+      if (!dataFechamento || isNaN(dataFechamento.getTime())) {
+        console.log('Invalid date, filtering out:', order.DATA_FECHAMENTO);
+        return false;
+      }
       
       if (filters.dataInicio && filters.dataFim) {
-        return isWithinInterval(dataFechamento, {
+        const inRange = isWithinInterval(dataFechamento, {
           start: filters.dataInicio,
           end: filters.dataFim
         });
+        console.log('Date range check:', {
+          date: dataFechamento,
+          start: filters.dataInicio,
+          end: filters.dataFim,
+          inRange
+        });
+        return inRange;
       } else if (filters.dataInicio) {
-        return dataFechamento >= filters.dataInicio;
+        const afterStart = dataFechamento >= filters.dataInicio;
+        console.log('After start check:', { date: dataFechamento, start: filters.dataInicio, afterStart });
+        return afterStart;
       } else if (filters.dataFim) {
-        return dataFechamento <= filters.dataFim;
+        const beforeEnd = dataFechamento <= filters.dataFim;
+        console.log('Before end check:', { date: dataFechamento, end: filters.dataFim, beforeEnd });
+        return beforeEnd;
       }
     }
     
     return true;
   });
+
+  console.log('Filter Debug - Result:', {
+    originalCount: orders.length,
+    filteredCount: filtered.length
+  });
+
+  return filtered;
 }
 
 export function analyzeRecalls(orders: ServiceOrder[]): ClientRecall[] {
