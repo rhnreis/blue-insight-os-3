@@ -219,6 +219,57 @@ export function analyzeRecallsByDate(recalls: ClientRecall[]): { data: string; r
     .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
 }
 
+export function analyzeRecallsByCityFromOrders(filteredOrders: ServiceOrder[], recalls: ClientRecall[]): { cidade: string; recalls: number }[] {
+  // Criar set dos IDs de ordens que são rechamadas nos dados filtrados
+  const recallOrderIds = new Set<number>();
+  recalls.forEach(recall => {
+    recall.ordens.forEach(ordem => {
+      recallOrderIds.add(ordem.COD_SUPORTE);
+    });
+  });
+  
+  const cityMap = new Map<string, number>();
+  
+  // Contar apenas ordens filtradas que são rechamadas
+  filteredOrders.forEach(ordem => {
+    if (recallOrderIds.has(ordem.COD_SUPORTE)) {
+      const cidade = ordem.CIDADE;
+      cityMap.set(cidade, (cityMap.get(cidade) || 0) + 1);
+    }
+  });
+  
+  return Array.from(cityMap.entries())
+    .map(([cidade, recalls]) => ({ cidade, recalls }))
+    .sort((a, b) => b.recalls - a.recalls);
+}
+
+export function analyzeRecallsByDateFromOrders(filteredOrders: ServiceOrder[], recalls: ClientRecall[]): { data: string; recalls: number }[] {
+  // Criar set dos IDs de ordens que são rechamadas nos dados filtrados
+  const recallOrderIds = new Set<number>();
+  recalls.forEach(recall => {
+    recall.ordens.forEach(ordem => {
+      recallOrderIds.add(ordem.COD_SUPORTE);
+    });
+  });
+  
+  const dateMap = new Map<string, number>();
+  
+  // Contar apenas ordens filtradas que são rechamadas
+  filteredOrders.forEach(ordem => {
+    if (recallOrderIds.has(ordem.COD_SUPORTE)) {
+      const data = parseDate(ordem.DATA_FECHAMENTO);
+      if (data && !isNaN(data.getTime())) {
+        const dateKey = data.toISOString().split('T')[0]; // YYYY-MM-DD
+        dateMap.set(dateKey, (dateMap.get(dateKey) || 0) + 1);
+      }
+    }
+  });
+  
+  return Array.from(dateMap.entries())
+    .map(([data, recalls]) => ({ data, recalls }))
+    .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+}
+
 export function analyzeRecallsByMonth(orders: ServiceOrder[], recalls: ClientRecall[]): { mes: string; totalOrdens: number; rechamadas: number; percentual: number }[] {
   const monthMap = new Map<string, { total: number; recalls: number }>();
   

@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, R
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { ClientRecall, TechnicianStats, CategoryStats, ServiceOrder } from '@/types/dashboard';
-import { analyzeRecallsByCity, analyzeRecallsByDate } from '@/utils/dataAnalysis';
+import { analyzeRecallsByCityFromOrders, analyzeRecallsByDateFromOrders } from '@/utils/dataAnalysis';
 
 interface ChartsProps {
   recalls: ClientRecall[];
@@ -39,10 +39,10 @@ const Charts: React.FC<ChartsProps> = ({ recalls, technicians, categories, month
   }));
 
   // Dados para gráfico de rechamadas por cidade (usando dados filtrados)
-  const cityRecallsData = analyzeRecallsByCity(recalls).slice(0, 10);
+  const cityRecallsData = analyzeRecallsByCityFromOrders(filteredOrders, recalls).slice(0, 10);
 
   // Dados para gráfico de linha - rechamadas por dia (usando dados filtrados)
-  const dailyRecallsData = analyzeRecallsByDate(recalls);
+  const dailyRecallsData = analyzeRecallsByDateFromOrders(filteredOrders, recalls);
 
   // Cores para os gráficos
   const colors = ['#0052CC', '#0066FF', '#3366FF', '#4D79FF', '#668CFF', '#809FFF', '#99B3FF', '#B3C6FF', '#CCD9FF', '#E6F0FF'];
