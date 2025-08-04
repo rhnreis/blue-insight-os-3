@@ -197,7 +197,7 @@ export function analyzeRecallsByDate(recalls: ClientRecall[]): { data: string; r
   recalls.forEach(recall => {
     recall.ordens.forEach(ordem => {
       const data = parseDate(ordem.DATA_ABERTURA);
-      if (data) {
+      if (data && !isNaN(data.getTime())) {
         const dateKey = data.toISOString().split('T')[0]; // YYYY-MM-DD
         dateMap.set(dateKey, (dateMap.get(dateKey) || 0) + 1);
       }
