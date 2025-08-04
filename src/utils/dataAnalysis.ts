@@ -39,43 +39,13 @@ export function filterServiceOrders(
   orders: ServiceOrder[],
   filters: DashboardFilters
 ): ServiceOrder[] {
-  console.log('=== DEBUG FILTRO ===');
-  console.log('Total de ordens recebidas:', orders.length);
-  console.log('Filtros aplicados:', filters);
-  console.log('Primeira ordem exemplo:', orders[0]);
-  
-  const result = orders.filter(order => {
+  return orders.filter(order => {
     const dataFechamento = parseDate(order.DATA_FECHAMENTO);
-    
-    console.log(`Ordem ${order.COD_SUPORTE}:`);
-    console.log(`  - Data original: "${order.DATA_FECHAMENTO}"`);
-    console.log(`  - Data parseada:`, dataFechamento);
-    console.log(`  - Data válida:`, dataFechamento && !isNaN(dataFechamento.getTime()));
     
     // Se não conseguir parsear a data, pula o registro
     if (!dataFechamento || isNaN(dataFechamento.getTime())) {
-      console.log(`  - REJEITADO: data inválida`);
       return false;
     }
-
-    // Se não há filtros de data, aceita todos os registros válidos
-    if (!filters.dataInicio && !filters.dataFim) {
-      console.log(`  - ACEITO: sem filtros de data`);
-      return true;
-    }
-
-    // Normalizar as datas para comparação (apenas a data, sem horário)
-    const fechamentoNormalized = new Date(dataFechamento.getFullYear(), dataFechamento.getMonth(), dataFechamento.getDate());
-    
-    const matchDataInicio = !filters.dataInicio || (() => {
-      const inicioNormalized = new Date(filters.dataInicio.getFullYear(), filters.dataInicio.getMonth(), filters.dataInicio.getDate());
-      return fechamentoNormalized >= inicioNormalized;
-    })();
-
-    const matchDataFim = !filters.dataFim || (() => {
-      const fimNormalized = new Date(filters.dataFim.getFullYear(), filters.dataFim.getMonth(), filters.dataFim.getDate());
-      return fechamentoNormalized <= fimNormalized;
-    })();
 
     const matchBairro =
       !filters.bairro || order.BAIRRO === filters.bairro;
@@ -89,7 +59,28 @@ export function filterServiceOrders(
     const matchCategoria =
       !filters.categoria || order.CATEGORIA === filters.categoria;
 
-    const resultado = (
+    // Se não há filtros de data, só verifica os outros filtros
+    if (!filters.dataInicio && !filters.dataFim) {
+      return matchBairro && matchCidade && matchTecnico && matchCategoria;
+    }
+
+    // Normalizar as datas para comparação (apenas a data, sem horário)
+    const fechamentoNormalized = new Date(dataFechamento.getFullYear(), dataFechamento.getMonth(), dataFechamento.getDate());
+    
+    let matchDataInicio = true;
+    let matchDataFim = true;
+    
+    if (filters.dataInicio) {
+      const inicioNormalized = new Date(filters.dataInicio.getFullYear(), filters.dataInicio.getMonth(), filters.dataInicio.getDate());
+      matchDataInicio = fechamentoNormalized >= inicioNormalized;
+    }
+    
+    if (filters.dataFim) {
+      const fimNormalized = new Date(filters.dataFim.getFullYear(), filters.dataFim.getMonth(), filters.dataFim.getDate());
+      matchDataFim = fechamentoNormalized <= fimNormalized;
+    }
+
+    return (
       matchDataInicio &&
       matchDataFim &&
       matchBairro &&
@@ -97,16 +88,7 @@ export function filterServiceOrders(
       matchTecnico &&
       matchCategoria
     );
-    
-    console.log(`  - Resultado final: ${resultado}`);
-
-    return resultado;
   });
-  
-  console.log('Total de ordens filtradas:', result.length);
-  console.log('=== FIM DEBUG ===');
-  
-  return result;
 }
 
 
