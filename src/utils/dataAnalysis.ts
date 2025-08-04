@@ -39,12 +39,29 @@ export function filterServiceOrders(
   orders: ServiceOrder[],
   filters: DashboardFilters
 ): ServiceOrder[] {
-  return orders.filter(order => {
+  console.log('=== DEBUG FILTRO ===');
+  console.log('Total de ordens recebidas:', orders.length);
+  console.log('Filtros aplicados:', filters);
+  console.log('Primeira ordem exemplo:', orders[0]);
+  
+  const result = orders.filter(order => {
     const dataFechamento = parseDate(order.DATA_FECHAMENTO);
+    
+    console.log(`Ordem ${order.COD_SUPORTE}:`);
+    console.log(`  - Data original: "${order.DATA_FECHAMENTO}"`);
+    console.log(`  - Data parseada:`, dataFechamento);
+    console.log(`  - Data válida:`, dataFechamento && !isNaN(dataFechamento.getTime()));
     
     // Se não conseguir parsear a data, pula o registro
     if (!dataFechamento || isNaN(dataFechamento.getTime())) {
+      console.log(`  - REJEITADO: data inválida`);
       return false;
+    }
+
+    // Se não há filtros de data, aceita todos os registros válidos
+    if (!filters.dataInicio && !filters.dataFim) {
+      console.log(`  - ACEITO: sem filtros de data`);
+      return true;
     }
 
     // Normalizar as datas para comparação (apenas a data, sem horário)
@@ -72,7 +89,7 @@ export function filterServiceOrders(
     const matchCategoria =
       !filters.categoria || order.CATEGORIA === filters.categoria;
 
-    return (
+    const resultado = (
       matchDataInicio &&
       matchDataFim &&
       matchBairro &&
@@ -80,7 +97,16 @@ export function filterServiceOrders(
       matchTecnico &&
       matchCategoria
     );
+    
+    console.log(`  - Resultado final: ${resultado}`);
+
+    return resultado;
   });
+  
+  console.log('Total de ordens filtradas:', result.length);
+  console.log('=== FIM DEBUG ===');
+  
+  return result;
 }
 
 
