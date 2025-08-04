@@ -219,6 +219,58 @@ export function analyzeRecallsByDate(recalls: ClientRecall[]): { data: string; r
     .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
 }
 
+export function analyzeRecallsByMonth(orders: ServiceOrder[], recalls: ClientRecall[]): { mes: string; totalOrdens: number; rechamadas: number; percentual: number }[] {
+  const monthMap = new Map<string, { total: number; recalls: number }>();
+  
+  // Contar total de ordens por mês
+  orders.forEach(order => {
+    const data = parseDate(order.DATA_FECHAMENTO);
+    if (data && !isNaN(data.getTime())) {
+      const monthKey = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+      if (!monthMap.has(monthKey)) {
+        monthMap.set(monthKey, { total: 0, recalls: 0 });
+      }
+      monthMap.get(monthKey)!.total++;
+    }
+  });
+  
+  // Contar rechamadas por mês
+  recalls.forEach(recall => {
+    recall.ordens.forEach(ordem => {
+      const data = parseDate(ordem.DATA_FECHAMENTO);
+      if (data && !isNaN(data.getTime())) {
+        const monthKey = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+        if (monthMap.has(monthKey)) {
+          monthMap.get(monthKey)!.recalls++;
+        }
+      }
+    });
+  });
+  
+  return Array.from(monthMap.entries())
+    .map(([monthKey, stats]) => {
+      const [year, month] = monthKey.split('-');
+      const monthNames = [
+        'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+        'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+      ];
+      return {
+        mes: `${monthNames[parseInt(month) - 1]}/${year}`,
+        totalOrdens: stats.total,
+        rechamadas: stats.recalls,
+        percentual: stats.total > 0 ? (stats.recalls / stats.total) * 100 : 0
+      };
+    })
+    .sort((a, b) => {
+      const [monthA, yearA] = a.mes.split('/');
+      const [monthB, yearB] = b.mes.split('/');
+      const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      const dateA = new Date(parseInt(yearA), monthNames.indexOf(monthA));
+      const dateB = new Date(parseInt(yearB), monthNames.indexOf(monthB));
+      return dateA.getTime() - dateB.getTime();
+    });
+}
+
 export function generateInsights(kpis: DashboardKPIs, recalls: ClientRecall[], categories: CategoryStats[]): string[] {
   const insights: string[] = [];
   

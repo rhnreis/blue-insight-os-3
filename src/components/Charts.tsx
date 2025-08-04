@@ -2,16 +2,18 @@ import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { ClientRecall, TechnicianStats, CategoryStats } from '@/types/dashboard';
+import { ClientRecall, TechnicianStats, CategoryStats, ServiceOrder } from '@/types/dashboard';
 import { analyzeRecallsByCity, analyzeRecallsByDate } from '@/utils/dataAnalysis';
 
 interface ChartsProps {
   recalls: ClientRecall[];
   technicians: TechnicianStats[];
   categories: CategoryStats[];
+  monthlyData: { mes: string; totalOrdens: number; rechamadas: number; percentual: number }[];
+  filteredOrders: ServiceOrder[];
 }
 
-const Charts: React.FC<ChartsProps> = ({ recalls, technicians, categories }) => {
+const Charts: React.FC<ChartsProps> = ({ recalls, technicians, categories, monthlyData, filteredOrders }) => {
   // Dados para gráfico de clientes com mais rechamadas (Top 10)
   const topClientsData = recalls.slice(0, 10).map(recall => ({
     nome: recall.nomeCliente.length > 20 
@@ -36,18 +38,11 @@ const Charts: React.FC<ChartsProps> = ({ recalls, technicians, categories }) => 
     percentual: cat.percentual
   }));
 
-  // Dados para gráfico de rechamadas por cidade
+  // Dados para gráfico de rechamadas por cidade (usando dados filtrados)
   const cityRecallsData = analyzeRecallsByCity(recalls).slice(0, 10);
 
-  // Dados para gráfico de linha - rechamadas por dia
+  // Dados para gráfico de linha - rechamadas por dia (usando dados filtrados)
   const dailyRecallsData = analyzeRecallsByDate(recalls);
-  
-  console.log('Charts Debug:', {
-    recallsCount: recalls.length,
-    categoriesCount: categories.length,
-    categoryBarData,
-    dailyRecallsData
-  });
 
   // Cores para os gráficos
   const colors = ['#0052CC', '#0066FF', '#3366FF', '#4D79FF', '#668CFF', '#809FFF', '#99B3FF', '#B3C6FF', '#CCD9FF', '#E6F0FF'];
@@ -65,6 +60,54 @@ const Charts: React.FC<ChartsProps> = ({ recalls, technicians, categories }) => 
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Gráfico de Rechamadas por Mês */}
+      <Card className="shadow-card hover:shadow-elevated transition-shadow lg:col-span-2">
+        <CardHeader>
+          <CardTitle>Análise Mensal - Ordens de Serviço e Rechamadas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={chartConfig} className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis 
+                  dataKey="mes" 
+                  stroke="hsl(var(--foreground))"
+                />
+                <YAxis stroke="hsl(var(--foreground))" />
+                <ChartTooltip 
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="rounded-lg border bg-background p-3 shadow-md">
+                          <div className="grid gap-2">
+                            <div className="font-medium">{data.mes}</div>
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-dashboard-secondary" />
+                              <span className="text-sm">Total OS: {data.totalOrdens}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-destructive" />
+                              <span className="text-sm">Rechamadas: {data.rechamadas}</span>
+                            </div>
+                            <div className="text-sm font-medium">
+                              % Rechamadas: {data.percentual.toFixed(1)}%
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Bar dataKey="totalOrdens" fill="hsl(var(--dashboard-secondary))" name="Total OS" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="rechamadas" fill="hsl(var(--destructive))" name="Rechamadas" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        </CardContent>
+      </Card>
       {/* Gráfico de Clientes com Mais Rechamadas */}
       <Card className="shadow-card hover:shadow-elevated transition-shadow">
         <CardHeader>

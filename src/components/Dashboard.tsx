@@ -6,7 +6,8 @@ import {
   analyzeTechnicians,
   analyzeCategories,
   calculateKPIs,
-  generateInsights
+  generateInsights,
+  analyzeRecallsByMonth
 } from '@/utils/dataAnalysis';
 import FileUpload from './FileUpload';
 import KPICards from './KPICards';
@@ -27,6 +28,7 @@ const Dashboard: React.FC = () => {
         recalls: [],
         technicians: [],
         categories: [],
+        monthlyData: [],
         kpis: {
           totalOrdens: 0,
           totalRecalls: 0,
@@ -42,6 +44,7 @@ const Dashboard: React.FC = () => {
     const recalls = analyzeRecalls(filteredOrders);
     const technicians = analyzeTechnicians(filteredOrders, recalls);
     const categories = analyzeCategories(filteredOrders, recalls);
+    const monthlyData = analyzeRecallsByMonth(filteredOrders, recalls);
     const kpis = calculateKPIs(filteredOrders, recalls, technicians);
     const insights = generateInsights(kpis, recalls, categories);
 
@@ -50,6 +53,7 @@ const Dashboard: React.FC = () => {
       recalls,
       technicians,
       categories,
+      monthlyData,
       kpis,
       insights
     };
@@ -127,6 +131,8 @@ const Dashboard: React.FC = () => {
                   recalls={analysisData.recalls}
                   technicians={analysisData.technicians}
                   categories={analysisData.categories}
+                  monthlyData={analysisData.monthlyData}
+                  filteredOrders={analysisData.filteredOrders}
                 />
               </div>
             ) : (
