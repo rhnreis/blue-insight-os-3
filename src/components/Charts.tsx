@@ -1,4 +1,5 @@
 import React from 'react';
+import { LabelList } from "recharts";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
@@ -61,22 +62,22 @@ const Charts: React.FC<ChartsProps> = ({ recalls, technicians, categories, month
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Gráfico de Rechamadas por Mês */}
-      <Card className="shadow-card hover:shadow-elevated transition-shadow lg:col-span-2">
+      <Card className="shadow-card hover:shadow-elevated transition-shadow lg:col-span-2 w-full">
         <CardHeader>
           <CardTitle>Análise Mensal - Ordens de Serviço e Rechamadas</CardTitle>
         </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="h-80">
+        <CardContent className="p-4 w-full">
+          <ChartContainer config={chartConfig} className="w-full h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <BarChart
+                data={monthlyData}
+                margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis 
-                  dataKey="mes" 
-                  stroke="hsl(var(--foreground))"
-                />
+                <XAxis dataKey="mes" stroke="hsl(var(--foreground))" />
                 <YAxis stroke="hsl(var(--foreground))" />
-                <ChartTooltip 
-                  content={({ active, payload, label }) => {
+                <ChartTooltip
+                  content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const data = payload[0].payload;
                       return (
@@ -85,11 +86,15 @@ const Charts: React.FC<ChartsProps> = ({ recalls, technicians, categories, month
                             <div className="font-medium">{data.mes}</div>
                             <div className="flex items-center gap-2">
                               <div className="h-2 w-2 rounded-full bg-dashboard-secondary" />
-                              <span className="text-sm">Total OS: {data.totalOrdens}</span>
+                              <span className="text-sm">
+                                Total OS: {data.totalOrdens}
+                              </span>
                             </div>
                             <div className="flex items-center gap-2">
                               <div className="h-2 w-2 rounded-full bg-destructive" />
-                              <span className="text-sm">Rechamadas: {data.rechamadas}</span>
+                              <span className="text-sm">
+                                Rechamadas: {data.rechamadas}
+                              </span>
                             </div>
                             <div className="text-sm font-medium">
                               % Rechamadas: {data.percentual.toFixed(1)}%
@@ -101,13 +106,28 @@ const Charts: React.FC<ChartsProps> = ({ recalls, technicians, categories, month
                     return null;
                   }}
                 />
-                <Bar dataKey="totalOrdens" fill="hsl(var(--dashboard-secondary))" name="Total OS" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="rechamadas" fill="hsl(var(--destructive))" name="Rechamadas" radius={[2, 2, 0, 0]} />
+                <Bar
+                  dataKey="totalOrdens"
+                  fill="hsl(var(--dashboard-secondary))"
+                  name="Total OS"
+                  radius={[2, 2, 0, 0]}
+                >
+                  <LabelList dataKey="totalOrdens" position="top" fill="#000" fontSize={12} />
+                </Bar>
+                <Bar
+                  dataKey="rechamadas"
+                  fill="hsl(var(--destructive))"
+                  name="Rechamadas"
+                  radius={[2, 2, 0, 0]}
+                >
+                  <LabelList dataKey="rechamadas" position="top" fill="#000" fontSize={12} />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>
         </CardContent>
       </Card>
+
       {/* Gráfico de Clientes com Mais Rechamadas */}
       <Card className="shadow-card hover:shadow-elevated transition-shadow">
         <CardHeader>
@@ -262,52 +282,52 @@ const Charts: React.FC<ChartsProps> = ({ recalls, technicians, categories, month
       </Card>
 
       {/* Gráfico de Linha - Rechamadas por Dia */}
-      <Card className="shadow-card hover:shadow-elevated transition-shadow lg:col-span-2">
-        <CardHeader>
-          <CardTitle>Evolução das Rechamadas por Dia</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dailyRecallsData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis 
-                  dataKey="data" 
-                  stroke="hsl(var(--foreground))"
-                  tickFormatter={(value) => new Date(value).toLocaleDateString('pt-BR')}
-                />
-                <YAxis stroke="hsl(var(--foreground))" />
-                <ChartTooltip 
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload;
-                      return (
-                        <div className="rounded-lg border bg-background p-2 shadow-md">
-                          <div className="grid gap-2">
-                            <div className="font-medium">
-                              {new Date(data.data).toLocaleDateString('pt-BR')}
-                            </div>
-                            <div className="text-sm">Rechamadas: {data.recalls}</div>
+      <Card className="shadow-card hover:shadow-elevated transition-shadow lg:col-span-2 w-full">
+      <CardHeader>
+        <CardTitle>Evolução das Rechamadas por Dia</CardTitle>
+      </CardHeader>
+      <CardContent className="p-4 w-full">
+        <ChartContainer config={chartConfig} className="w-full h-[350px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={dailyRecallsData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis 
+                dataKey="data" 
+                stroke="hsl(var(--foreground))"
+                tickFormatter={(value) => new Date(value).toLocaleDateString('pt-BR')}
+              />
+              <YAxis stroke="hsl(var(--foreground))" />
+              <ChartTooltip 
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    return (
+                      <div className="rounded-lg border bg-background p-2 shadow-md">
+                        <div className="grid gap-2">
+                          <div className="font-medium">
+                            {new Date(data.data).toLocaleDateString('pt-BR')}
                           </div>
+                          <div className="text-sm">Rechamadas: {data.recalls}</div>
                         </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="recalls" 
-                  stroke="hsl(var(--dashboard-primary))" 
-                  strokeWidth={3}
-                  dot={{ fill: "hsl(var(--dashboard-primary))", strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6, stroke: "hsl(var(--dashboard-primary))", strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-        </CardContent>
-      </Card>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="recalls" 
+                stroke="hsl(var(--dashboard-primary))" 
+                strokeWidth={3}
+                dot={{ fill: "hsl(var(--dashboard-primary))", strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: "hsl(var(--dashboard-primary))", strokeWidth: 2 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+      </CardContent>
+    </Card>
 
       {/* Gráfico de Rechamadas por Cidade */}
       <Card className="shadow-card hover:shadow-elevated transition-shadow">
