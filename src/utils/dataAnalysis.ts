@@ -40,7 +40,10 @@ export function filterServiceOrders(
   filters: DashboardFilters
 ): ServiceOrder[] {
   return orders.filter(order => {
-    const dataFechamento = new Date(order.DATA_FECHAMENTO);
+    const dataFechamento = parseDate(order.DATA_FECHAMENTO);
+    
+    // Se não conseguir parsear a data, pula o registro
+    if (!dataFechamento) return false;
 
     const matchDataInicio =
       !filters.dataInicio || dataFechamento >= new Date(filters.dataInicio);
