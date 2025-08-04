@@ -147,7 +147,10 @@ const DashboardFilters: React.FC<DashboardFiltersProps> = ({
             <label className="text-sm font-medium">Data Início (DATA_FECHAMENTO)</label>
             <EnhancedDatePicker
               value={filters.dataInicio}
-              onChange={(date) => updateFilter('dataInicio', date)}
+              onChange={(date) => {
+                const parsed = date ? new Date(date) : undefined;
+                updateFilter('dataInicio', parsed);
+              }}
               placeholder="Selecionar data início"
               availableDates={availableDates}
             />
@@ -158,7 +161,10 @@ const DashboardFilters: React.FC<DashboardFiltersProps> = ({
             <label className="text-sm font-medium">Data Fim (DATA_FECHAMENTO)</label>
             <EnhancedDatePicker
               value={filters.dataFim}
-              onChange={(date) => updateFilter('dataFim', date)}
+              onChange={(date) => {
+                const parsed = date ? new Date(date) : undefined;
+                updateFilter('dataFim', parsed);
+              }}
               placeholder="Selecionar data fim"
               availableDates={availableDates}
             />
