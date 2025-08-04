@@ -39,14 +39,11 @@ export function filterServiceOrders(
   orders: ServiceOrder[],
   filters: DashboardFilters
 ): ServiceOrder[] {
-  console.log('Filtros aplicados:', filters);
-  
   return orders.filter(order => {
     const dataFechamento = parseDate(order.DATA_FECHAMENTO);
     
     // Se não conseguir parsear a data, pula o registro
-    if (!dataFechamento) {
-      console.log('Data inválida:', order.DATA_FECHAMENTO);
+    if (!dataFechamento || isNaN(dataFechamento.getTime())) {
       return false;
     }
 
@@ -55,20 +52,12 @@ export function filterServiceOrders(
     
     const matchDataInicio = !filters.dataInicio || (() => {
       const inicioNormalized = new Date(filters.dataInicio.getFullYear(), filters.dataInicio.getMonth(), filters.dataInicio.getDate());
-      const match = fechamentoNormalized >= inicioNormalized;
-      if (filters.dataInicio) {
-        console.log(`Data início - Fechamento: ${fechamentoNormalized.toISOString()} >= Início: ${inicioNormalized.toISOString()} = ${match}`);
-      }
-      return match;
+      return fechamentoNormalized >= inicioNormalized;
     })();
 
     const matchDataFim = !filters.dataFim || (() => {
       const fimNormalized = new Date(filters.dataFim.getFullYear(), filters.dataFim.getMonth(), filters.dataFim.getDate());
-      const match = fechamentoNormalized <= fimNormalized;
-      if (filters.dataFim) {
-        console.log(`Data fim - Fechamento: ${fechamentoNormalized.toISOString()} <= Fim: ${fimNormalized.toISOString()} = ${match}`);
-      }
-      return match;
+      return fechamentoNormalized <= fimNormalized;
     })();
 
     const matchBairro =
@@ -83,7 +72,7 @@ export function filterServiceOrders(
     const matchCategoria =
       !filters.categoria || order.CATEGORIA === filters.categoria;
 
-    const resultado = (
+    return (
       matchDataInicio &&
       matchDataFim &&
       matchBairro &&
@@ -91,12 +80,6 @@ export function filterServiceOrders(
       matchTecnico &&
       matchCategoria
     );
-
-    if (filters.dataInicio || filters.dataFim) {
-      console.log(`Ordem ${order.COD_SUPORTE} - Data: ${order.DATA_FECHAMENTO} - Resultado: ${resultado}`);
-    }
-
-    return resultado;
   });
 }
 
