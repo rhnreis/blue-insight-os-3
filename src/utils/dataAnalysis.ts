@@ -39,17 +39,37 @@ export function filterServiceOrders(
   orders: ServiceOrder[],
   filters: DashboardFilters
 ): ServiceOrder[] {
+  console.log('Filtros aplicados:', filters);
+  
   return orders.filter(order => {
     const dataFechamento = parseDate(order.DATA_FECHAMENTO);
     
     // Se não conseguir parsear a data, pula o registro
-    if (!dataFechamento) return false;
+    if (!dataFechamento) {
+      console.log('Data inválida:', order.DATA_FECHAMENTO);
+      return false;
+    }
 
-    const matchDataInicio =
-      !filters.dataInicio || dataFechamento >= new Date(filters.dataInicio);
+    // Normalizar as datas para comparação (apenas a data, sem horário)
+    const fechamentoNormalized = new Date(dataFechamento.getFullYear(), dataFechamento.getMonth(), dataFechamento.getDate());
+    
+    const matchDataInicio = !filters.dataInicio || (() => {
+      const inicioNormalized = new Date(filters.dataInicio.getFullYear(), filters.dataInicio.getMonth(), filters.dataInicio.getDate());
+      const match = fechamentoNormalized >= inicioNormalized;
+      if (filters.dataInicio) {
+        console.log(`Data início - Fechamento: ${fechamentoNormalized.toISOString()} >= Início: ${inicioNormalized.toISOString()} = ${match}`);
+      }
+      return match;
+    })();
 
-    const matchDataFim =
-      !filters.dataFim || dataFechamento <= new Date(filters.dataFim);
+    const matchDataFim = !filters.dataFim || (() => {
+      const fimNormalized = new Date(filters.dataFim.getFullYear(), filters.dataFim.getMonth(), filters.dataFim.getDate());
+      const match = fechamentoNormalized <= fimNormalized;
+      if (filters.dataFim) {
+        console.log(`Data fim - Fechamento: ${fechamentoNormalized.toISOString()} <= Fim: ${fimNormalized.toISOString()} = ${match}`);
+      }
+      return match;
+    })();
 
     const matchBairro =
       !filters.bairro || order.BAIRRO === filters.bairro;
@@ -63,7 +83,7 @@ export function filterServiceOrders(
     const matchCategoria =
       !filters.categoria || order.CATEGORIA === filters.categoria;
 
-    return (
+    const resultado = (
       matchDataInicio &&
       matchDataFim &&
       matchBairro &&
@@ -71,6 +91,12 @@ export function filterServiceOrders(
       matchTecnico &&
       matchCategoria
     );
+
+    if (filters.dataInicio || filters.dataFim) {
+      console.log(`Ordem ${order.COD_SUPORTE} - Data: ${order.DATA_FECHAMENTO} - Resultado: ${resultado}`);
+    }
+
+    return resultado;
   });
 }
 
