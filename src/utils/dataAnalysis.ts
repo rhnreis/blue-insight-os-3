@@ -35,71 +35,42 @@ export function parseDate(dateString: string): Date | null {
   }
 }
 
-export function filterServiceOrders(orders: ServiceOrder[], filters: DashboardFilters): ServiceOrder[] {
-  console.log('Filter Debug - Input:', {
-    totalOrders: orders.length,
-    filters,
-    sampleDates: orders.slice(0, 3).map(o => ({
-      fechamento: o.DATA_FECHAMENTO,
-      parsed: parseDate(o.DATA_FECHAMENTO)
-    }))
-  });
+export function filterServiceOrders(
+  orders: ServiceOrder[],
+  filters: DashboardFilters
+): ServiceOrder[] {
+  return orders.filter(order => {
+    const dataFechamento = new Date(order.DATA_FECHAMENTO);
 
-  const filtered = orders.filter(order => {
-    if (filters.bairro && order.BAIRRO !== filters.bairro) return false;
-    if (filters.cidade && order.CIDADE !== filters.cidade) return false;
-    if (filters.categoria && order.CATEGORIA !== filters.categoria) return false;
-    if (filters.tecnico && order.TECNICO !== filters.tecnico) return false;
-    
-    if (filters.dataInicio || filters.dataFim) {
-      const dataFechamento = parseDate(order.DATA_FECHAMENTO);
-      
-      console.log('Date filter check:', {
-        orderFechamento: order.DATA_FECHAMENTO,
-        parsedDate: dataFechamento,
-        filterStart: filters.dataInicio,
-        filterEnd: filters.dataFim,
-        isValidDate: dataFechamento && !isNaN(dataFechamento.getTime())
-      });
-      
-      if (!dataFechamento || isNaN(dataFechamento.getTime())) {
-        console.log('Invalid date, filtering out:', order.DATA_FECHAMENTO);
-        return false;
-      }
-      
-      if (filters.dataInicio && filters.dataFim) {
-        const inRange = isWithinInterval(dataFechamento, {
-          start: filters.dataInicio,
-          end: filters.dataFim
-        });
-        console.log('Date range check:', {
-          date: dataFechamento,
-          start: filters.dataInicio,
-          end: filters.dataFim,
-          inRange
-        });
-        return inRange;
-      } else if (filters.dataInicio) {
-        const afterStart = dataFechamento >= filters.dataInicio;
-        console.log('After start check:', { date: dataFechamento, start: filters.dataInicio, afterStart });
-        return afterStart;
-      } else if (filters.dataFim) {
-        const beforeEnd = dataFechamento <= filters.dataFim;
-        console.log('Before end check:', { date: dataFechamento, end: filters.dataFim, beforeEnd });
-        return beforeEnd;
-      }
-    }
-    
-    return true;
-  });
+    const matchDataInicio =
+      !filters.dataInicio || dataFechamento >= new Date(filters.dataInicio);
 
-  console.log('Filter Debug - Result:', {
-    originalCount: orders.length,
-    filteredCount: filtered.length
-  });
+    const matchDataFim =
+      !filters.dataFim || dataFechamento <= new Date(filters.dataFim);
 
-  return filtered;
+    const matchBairro =
+      !filters.bairro || order.BAIRRO === filters.bairro;
+
+    const matchCidade =
+      !filters.cidade || order.CIDADE === filters.cidade;
+
+    const matchTecnico =
+      !filters.tecnico || order.TECNICO === filters.tecnico;
+
+    const matchCategoria =
+      !filters.categoria || order.CATEGORIA === filters.categoria;
+
+    return (
+      matchDataInicio &&
+      matchDataFim &&
+      matchBairro &&
+      matchCidade &&
+      matchTecnico &&
+      matchCategoria
+    );
+  });
 }
+
 
 export function analyzeRecalls(orders: ServiceOrder[]): ClientRecall[] {
   const clientGroups = new Map<number, ServiceOrder[]>();

@@ -144,7 +144,7 @@ const DashboardFilters: React.FC<DashboardFiltersProps> = ({
 
           {/* Filtro de Data Início */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Data Início (Fechamento)</label>
+            <label className="text-sm font-medium">Data Início (DATA_FECHAMENTO)</label>
             <EnhancedDatePicker
               value={filters.dataInicio}
               onChange={(date) => updateFilter('dataInicio', date)}
@@ -155,7 +155,7 @@ const DashboardFilters: React.FC<DashboardFiltersProps> = ({
 
           {/* Filtro de Data Fim */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Data Fim (Fechamento)</label>
+            <label className="text-sm font-medium">Data Fim (DATA_FECHAMENTO)</label>
             <EnhancedDatePicker
               value={filters.dataFim}
               onChange={(date) => updateFilter('dataFim', date)}
