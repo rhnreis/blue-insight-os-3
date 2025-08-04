@@ -1,5 +1,5 @@
 import { ServiceOrder, ClientRecall, TechnicianStats, CategoryStats, DashboardKPIs, DashboardFilters } from '@/types/dashboard';
-import { parse, isWithinInterval } from 'date-fns';
+import { parse } from 'date-fns';
 
 export function parseExcelData(data: any[]): ServiceOrder[] {
   return data.map(row => ({
@@ -9,27 +9,37 @@ export function parseExcelData(data: any[]): ServiceOrder[] {
     BAIRRO: String(row.BAIRRO || ''),
     CIDADE: String(row.CIDADE || ''),
     CATEGORIA: String(row.CATEGORIA || ''),
-    DATA_ABERTURA: String(row.DATA_ABERTURA || ''),
-    DATA_FECHAMENTO: String(row.DATA_FECHAMENTO || ''),
+    DATA_ABERTURA: row.DATA_ABERTURA,
+    DATA_FECHAMENTO: row.DATA_FECHAMENTO,
     TECNICO: String(row.TECNICO || '')
   }));
 }
 
-export function parseDate(dateString: string): Date | null {
+// Função ajustada para lidar com vários formatos e números do Excel
+export function parseDate(dateValue: any): Date | null {
   try {
-    // Tenta diferentes formatos de data
-    const formats = ['dd/MM/yyyy', 'dd-MM-yyyy', 'yyyy-MM-dd'];
-    
+    if (!dateValue) return null;
+
+    // Se vier como número (serial do Excel)
+    if (typeof dateValue === 'number') {
+      return new Date((dateValue - 25569) * 86400 * 1000);
+    }
+
+    if (dateValue instanceof Date) return dateValue;
+
+    const str = String(dateValue).trim();
+
+    const formats = ['dd/MM/yyyy', 'yyyy-MM-dd', 'MM/dd/yyyy'];
     for (const format of formats) {
-      try {
-        return parse(dateString, format, new Date());
-      } catch {
-        continue;
+      const parsed = parse(str, format, new Date());
+      if (!isNaN(parsed.getTime())) {
+        return parsed;
       }
     }
-    
-    // Se nenhum formato funcionar, tenta parsing direto
-    return new Date(dateString);
+
+    // Fallback para datas no formato nativo JS
+    const fallback = new Date(str);
+    return isNaN(fallback.getTime()) ? null : fallback;
   } catch {
     return null;
   }
@@ -39,7 +49,6 @@ export function filterServiceOrders(
   orders: ServiceOrder[],
   filters: DashboardFilters
 ): ServiceOrder[] {
-  // Debug dos filtros aplicados
   if (filters.dataInicio || filters.dataFim) {
     console.log('=== FILTROS DE DATA APLICADOS ===');
     console.log('DataInicio:', filters.dataInicio);
@@ -48,52 +57,31 @@ export function filterServiceOrders(
   }
 
   return orders.filter(order => {
-    const matchBairro =
-      !filters.bairro || order.BAIRRO === filters.bairro;
+    const matchBairro = !filters.bairro || order.BAIRRO === filters.bairro;
+    const matchCidade = !filters.cidade || order.CIDADE === filters.cidade;
+    const matchTecnico = !filters.tecnico || order.TECNICO === filters.tecnico;
+    const matchCategoria = !filters.categoria || order.CATEGORIA === filters.categoria;
 
-    const matchCidade =
-      !filters.cidade || order.CIDADE === filters.cidade;
-
-    const matchTecnico =
-      !filters.tecnico || order.TECNICO === filters.tecnico;
-
-    const matchCategoria =
-      !filters.categoria || order.CATEGORIA === filters.categoria;
-
-    // Se não há filtros de data, só verifica os outros filtros
     if (!filters.dataInicio && !filters.dataFim) {
       return matchBairro && matchCidade && matchTecnico && matchCategoria;
     }
 
-    // Só aplica filtros de data se eles existirem
     const dataFechamento = parseDate(order.DATA_FECHAMENTO);
-    
-    // Se não conseguir parsear a data MAS há filtros de data, rejeita o registro
+
     if (!dataFechamento || isNaN(dataFechamento.getTime())) {
+      console.warn(`Data inválida na ordem ${order.COD_SUPORTE}: ${order.DATA_FECHAMENTO}`);
       return false;
     }
 
-    // Normalizar as datas para comparação (apenas a data, sem horário)
     const fechamentoNormalized = new Date(dataFechamento.getFullYear(), dataFechamento.getMonth(), dataFechamento.getDate());
-    
     let matchDataInicio = true;
     let matchDataFim = true;
-    
+
     if (filters.dataInicio) {
       const inicioNormalized = new Date(filters.dataInicio.getFullYear(), filters.dataInicio.getMonth(), filters.dataInicio.getDate());
       matchDataInicio = fechamentoNormalized >= inicioNormalized;
-      
-      // Debug da primeira ordem para ver as datas
-      if (order.COD_SUPORTE === orders[0].COD_SUPORTE) {
-        console.log('Primeira ordem - Debug:');
-        console.log('  Data original:', order.DATA_FECHAMENTO);
-        console.log('  Data parseada:', dataFechamento);
-        console.log('  Data normalizada:', fechamentoNormalized);
-        console.log('  Início normalizado:', inicioNormalized);
-        console.log('  Match início:', matchDataInicio);
-      }
     }
-    
+
     if (filters.dataFim) {
       const fimNormalized = new Date(filters.dataFim.getFullYear(), filters.dataFim.getMonth(), filters.dataFim.getDate());
       matchDataFim = fechamentoNormalized <= fimNormalized;
@@ -110,10 +98,8 @@ export function filterServiceOrders(
   });
 }
 
-
 export function analyzeRecalls(orders: ServiceOrder[]): ClientRecall[] {
   const clientGroups = new Map<number, ServiceOrder[]>();
-  
   orders.forEach(order => {
     const codCliente = order.COD_CLIENTE;
     if (!clientGroups.has(codCliente)) {
@@ -121,7 +107,7 @@ export function analyzeRecalls(orders: ServiceOrder[]): ClientRecall[] {
     }
     clientGroups.get(codCliente)!.push(order);
   });
-  
+
   return Array.from(clientGroups.entries())
     .filter(([_, ordens]) => ordens.length > 1)
     .map(([codCliente, ordens]) => ({
@@ -140,8 +126,6 @@ export function analyzeRecalls(orders: ServiceOrder[]): ClientRecall[] {
 
 export function analyzeTechnicians(orders: ServiceOrder[], recalls: ClientRecall[]): TechnicianStats[] {
   const technicianMap = new Map<string, { total: number; recalls: number }>();
-  
-  // Contar total de ordens por técnico
   orders.forEach(order => {
     const tecnico = order.TECNICO;
     if (!technicianMap.has(tecnico)) {
@@ -149,8 +133,7 @@ export function analyzeTechnicians(orders: ServiceOrder[], recalls: ClientRecall
     }
     technicianMap.get(tecnico)!.total++;
   });
-  
-  // Contar recalls por técnico
+
   recalls.forEach(recall => {
     recall.ordens.forEach(ordem => {
       const tecnico = ordem.TECNICO;
@@ -159,7 +142,7 @@ export function analyzeTechnicians(orders: ServiceOrder[], recalls: ClientRecall
       }
     });
   });
-  
+
   return Array.from(technicianMap.entries())
     .map(([tecnico, stats]) => ({
       tecnico,
@@ -172,8 +155,6 @@ export function analyzeTechnicians(orders: ServiceOrder[], recalls: ClientRecall
 
 export function analyzeCategories(orders: ServiceOrder[], recalls: ClientRecall[]): CategoryStats[] {
   const categoryMap = new Map<string, { total: number; recalls: number }>();
-  
-  // Contar total por categoria
   orders.forEach(order => {
     const categoria = order.CATEGORIA;
     if (!categoryMap.has(categoria)) {
@@ -181,8 +162,7 @@ export function analyzeCategories(orders: ServiceOrder[], recalls: ClientRecall[
     }
     categoryMap.get(categoria)!.total++;
   });
-  
-  // Contar recalls por categoria
+
   recalls.forEach(recall => {
     recall.ordens.forEach(ordem => {
       const categoria = ordem.CATEGORIA;
@@ -191,7 +171,7 @@ export function analyzeCategories(orders: ServiceOrder[], recalls: ClientRecall[
       }
     });
   });
-  
+
   return Array.from(categoryMap.entries())
     .map(([categoria, stats]) => ({
       categoria,
@@ -206,10 +186,10 @@ export function calculateKPIs(orders: ServiceOrder[], recalls: ClientRecall[], t
   const totalOrdens = orders.length;
   const totalRecalls = recalls.reduce((acc, recall) => acc + recall.totalOrdens, 0);
   const percentualRecalls = totalOrdens > 0 ? (totalRecalls / totalOrdens) * 100 : 0;
-  
+
   const clienteComMaisRecalls = recalls.length > 0 ? recalls[0] : null;
   const tecnicoComMaisRecalls = technicians.length > 0 ? technicians[0] : null;
-  
+
   return {
     totalOrdens,
     totalRecalls,
@@ -225,16 +205,15 @@ export function calculateKPIs(orders: ServiceOrder[], recalls: ClientRecall[], t
   };
 }
 
+
 export function analyzeRecallsByCity(recalls: ClientRecall[]): { cidade: string; recalls: number }[] {
   const cityMap = new Map<string, number>();
-  
   recalls.forEach(recall => {
     recall.ordens.forEach(ordem => {
       const cidade = ordem.CIDADE;
       cityMap.set(cidade, (cityMap.get(cidade) || 0) + 1);
     });
   });
-  
   return Array.from(cityMap.entries())
     .map(([cidade, recalls]) => ({ cidade, recalls }))
     .sort((a, b) => b.recalls - a.recalls);
@@ -242,68 +221,56 @@ export function analyzeRecallsByCity(recalls: ClientRecall[]): { cidade: string;
 
 export function analyzeRecallsByDate(recalls: ClientRecall[]): { data: string; recalls: number }[] {
   const dateMap = new Map<string, number>();
-  
   recalls.forEach(recall => {
     recall.ordens.forEach(ordem => {
       const data = parseDate(ordem.DATA_FECHAMENTO);
       if (data && !isNaN(data.getTime())) {
-        const dateKey = data.toISOString().split('T')[0]; // YYYY-MM-DD
+        const dateKey = data.toISOString().split('T')[0];
         dateMap.set(dateKey, (dateMap.get(dateKey) || 0) + 1);
       }
     });
   });
-  
   return Array.from(dateMap.entries())
     .map(([data, recalls]) => ({ data, recalls }))
     .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
 }
 
 export function analyzeRecallsByCityFromOrders(filteredOrders: ServiceOrder[], recalls: ClientRecall[]): { cidade: string; recalls: number }[] {
-  // Criar set dos IDs de ordens que são rechamadas nos dados filtrados
   const recallOrderIds = new Set<number>();
   recalls.forEach(recall => {
     recall.ordens.forEach(ordem => {
       recallOrderIds.add(ordem.COD_SUPORTE);
     });
   });
-  
   const cityMap = new Map<string, number>();
-  
-  // Contar apenas ordens filtradas que são rechamadas
   filteredOrders.forEach(ordem => {
     if (recallOrderIds.has(ordem.COD_SUPORTE)) {
       const cidade = ordem.CIDADE;
       cityMap.set(cidade, (cityMap.get(cidade) || 0) + 1);
     }
   });
-  
   return Array.from(cityMap.entries())
     .map(([cidade, recalls]) => ({ cidade, recalls }))
     .sort((a, b) => b.recalls - a.recalls);
 }
 
 export function analyzeRecallsByDateFromOrders(filteredOrders: ServiceOrder[], recalls: ClientRecall[]): { data: string; recalls: number }[] {
-  // Criar set dos IDs de ordens que são rechamadas nos dados filtrados
   const recallOrderIds = new Set<number>();
   recalls.forEach(recall => {
     recall.ordens.forEach(ordem => {
       recallOrderIds.add(ordem.COD_SUPORTE);
     });
   });
-  
   const dateMap = new Map<string, number>();
-  
-  // Contar apenas ordens filtradas que são rechamadas
   filteredOrders.forEach(ordem => {
     if (recallOrderIds.has(ordem.COD_SUPORTE)) {
       const data = parseDate(ordem.DATA_FECHAMENTO);
       if (data && !isNaN(data.getTime())) {
-        const dateKey = data.toISOString().split('T')[0]; // YYYY-MM-DD
+        const dateKey = data.toISOString().split('T')[0];
         dateMap.set(dateKey, (dateMap.get(dateKey) || 0) + 1);
       }
     }
   });
-  
   return Array.from(dateMap.entries())
     .map(([data, recalls]) => ({ data, recalls }))
     .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
@@ -311,8 +278,6 @@ export function analyzeRecallsByDateFromOrders(filteredOrders: ServiceOrder[], r
 
 export function analyzeRecallsByMonth(orders: ServiceOrder[], recalls: ClientRecall[]): { mes: string; totalOrdens: number; rechamadas: number; percentual: number }[] {
   const monthMap = new Map<string, { total: number; recalls: number }>();
-  
-  // Contar total de ordens por mês
   orders.forEach(order => {
     const data = parseDate(order.DATA_FECHAMENTO);
     if (data && !isNaN(data.getTime())) {
@@ -323,8 +288,6 @@ export function analyzeRecallsByMonth(orders: ServiceOrder[], recalls: ClientRec
       monthMap.get(monthKey)!.total++;
     }
   });
-  
-  // Contar rechamadas por mês
   recalls.forEach(recall => {
     recall.ordens.forEach(ordem => {
       const data = parseDate(ordem.DATA_FECHAMENTO);
@@ -336,7 +299,6 @@ export function analyzeRecallsByMonth(orders: ServiceOrder[], recalls: ClientRec
       }
     });
   });
-  
   return Array.from(monthMap.entries())
     .map(([monthKey, stats]) => {
       const [year, month] = monthKey.split('-');
@@ -363,50 +325,30 @@ export function analyzeRecallsByMonth(orders: ServiceOrder[], recalls: ClientRec
 
 export function generateInsights(kpis: DashboardKPIs, recalls: ClientRecall[], categories: CategoryStats[]): string[] {
   const insights: string[] = [];
-  
-  insights.push(
-    `No período selecionado, ${kpis.percentualRecalls.toFixed(1)}% dos clientes tiveram mais de uma ordem de serviço.`
-  );
-  
+  insights.push(`No período selecionado, ${kpis.percentualRecalls.toFixed(1)}% dos clientes tiveram mais de uma ordem de serviço.`);
   if (kpis.clienteComMaisRecalls.quantidade > 0) {
-    insights.push(
-      `O cliente com maior número de rechamadas foi ${kpis.clienteComMaisRecalls.nome} com ${kpis.clienteComMaisRecalls.quantidade} ordens.`
-    );
+    insights.push(`O cliente com maior número de rechamadas foi ${kpis.clienteComMaisRecalls.nome} com ${kpis.clienteComMaisRecalls.quantidade} ordens.`);
   }
-  
   if (kpis.tecnicoComMaisRecalls.quantidade > 0) {
-    insights.push(
-      `O técnico com maior número de rechamadas foi ${kpis.tecnicoComMaisRecalls.nome} com ${kpis.tecnicoComMaisRecalls.quantidade} atendimentos repetidos.`
-    );
+    insights.push(`O técnico com maior número de rechamadas foi ${kpis.tecnicoComMaisRecalls.nome} com ${kpis.tecnicoComMaisRecalls.quantidade} atendimentos repetidos.`);
   }
-  
   if (categories.length > 0) {
-    insights.push(
-      `A categoria mais recorrente em rechamadas foi ${categories[0].categoria} com ${categories[0].recalls} ocorrências.`
-    );
+    insights.push(`A categoria mais recorrente em rechamadas foi ${categories[0].categoria} com ${categories[0].recalls} ocorrências.`);
   }
-  
   const clientesComRecalls = recalls.length;
   if (clientesComRecalls > 0) {
-    insights.push(
-      `${clientesComRecalls} clientes necessitaram de múltiplos atendimentos no período analisado.`
-    );
+    insights.push(`${clientesComRecalls} clientes necessitaram de múltiplos atendimentos no período analisado.`);
   }
-  
   return insights;
 }
 
 export function getAvailableDates(orders: ServiceOrder[]): Date[] {
   const dates = new Set<string>();
-  
   orders.forEach(order => {
     const fechamento = parseDate(order.DATA_FECHAMENTO);
     if (fechamento && !isNaN(fechamento.getTime())) {
       dates.add(fechamento.toISOString().split('T')[0]);
     }
   });
-  
-  return Array.from(dates)
-    .sort()
-    .map(dateStr => new Date(dateStr));
+  return Array.from(dates).sort().map(dateStr => new Date(dateStr));
 }
