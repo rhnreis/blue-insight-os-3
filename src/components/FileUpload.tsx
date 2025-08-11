@@ -180,6 +180,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded, isLoading }) => {
         <CardContent className="p-4">
           <h4 className="font-medium mb-2">Estrutura esperada do arquivo:</h4>
           <div className="text-sm text-muted-foreground space-y-1">
+            <p><strong>Campos obrigatórios:</strong></p>
             <p>• <strong>COD_SUPORTE:</strong> Código único da ordem de serviço</p>
             <p>• <strong>COD_CLIENTE:</strong> Código único do cliente</p>
             <p>• <strong>NOME_CLIENTE:</strong> Nome completo do cliente</p>
@@ -189,6 +190,16 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded, isLoading }) => {
             <p>• <strong>DATA_ABERTURA:</strong> Data de abertura da OS (dd/mm/aaaa)</p>
             <p>• <strong>DATA_FECHAMENTO:</strong> Data de fechamento da OS (dd/mm/aaaa)</p>
             <p>• <strong>TECNICO:</strong> Nome do técnico responsável</p>
+            
+            <p className="mt-2"><strong>Campos opcionais (para análise expandida):</strong></p>
+            <p>• <strong>COD_SERVICO, COD_SERVICO_CLIENTE:</strong> Códigos de serviço</p>
+            <p>• <strong>SUBCATEGORIA:</strong> Subcategoria da ordem</p>
+            <p>• <strong>HORA_ABERTURA, HORA_FECHAMENTO:</strong> Horários (HH:mm:ss)</p>
+            <p>• <strong>ENDERECO, NUMERO, COMPLEMENTO, ESTADO:</strong> Endereço completo</p>
+            <p>• <strong>TECNICO_AUXILIAR:</strong> Técnico auxiliar</p>
+            <p>• <strong>DEFEITO, TIPO_ATENDIMENTO, OPERADOR, NOTA, BASE:</strong> Detalhes adicionais</p>
+            
+            <p className="mt-2 font-medium">Formatos suportados: Excel (.xlsx, .xls) e CSV (.csv)</p>
           </div>
         </CardContent>
       </Card>
