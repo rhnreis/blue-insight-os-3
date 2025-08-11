@@ -41,11 +41,18 @@ const Dashboard: React.FC = () => {
     }
 
     const filteredOrders = filterServiceOrders(originalData, filters);
-    const recalls = analyzeRecalls(filteredOrders);
-    const technicians = analyzeTechnicians(filteredOrders, recalls);
-    const categories = analyzeCategories(filteredOrders, recalls);
-    const monthlyData = analyzeRecallsByMonth(filteredOrders, recalls);
-    const kpis = calculateKPIs(filteredOrders, recalls, technicians);
+    
+    // Prepare date filter for recall analysis
+    const dateFilter = {
+      dataInicio: filters.dataInicio,
+      dataFim: filters.dataFim
+    };
+    
+    const recalls = analyzeRecalls(filteredOrders, dateFilter);
+    const technicians = analyzeTechnicians(filteredOrders, recalls, dateFilter);
+    const categories = analyzeCategories(filteredOrders, recalls, dateFilter);
+    const monthlyData = analyzeRecallsByMonth(filteredOrders, recalls, dateFilter);
+    const kpis = calculateKPIs(filteredOrders, recalls, technicians, dateFilter);
     const insights = generateInsights(kpis, recalls, categories);
 
     return {
