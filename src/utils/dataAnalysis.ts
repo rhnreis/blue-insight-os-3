@@ -353,19 +353,19 @@ export function analyzeRecallsByMonth(orders: ServiceOrder[], recalls: ClientRec
 
 export function generateInsights(kpis: DashboardKPIs, recalls: ClientRecall[], categories: CategoryStats[]): string[] {
   const insights: string[] = [];
-  insights.push(`No período selecionado, ${kpis.percentualRecalls.toFixed(1)}% dos clientes tiveram mais de uma ordem de serviço.`);
+  insights.push(`No período selecionado, ${kpis.percentualRecalls.toFixed(1)}% das ordens são rechamadas sequenciais baseadas em categorias de gatilho.`);
   if (kpis.clienteComMaisRecalls.quantidade > 0) {
-    insights.push(`O cliente com maior número de rechamadas foi ${kpis.clienteComMaisRecalls.nome} com ${kpis.clienteComMaisRecalls.quantidade} ordens.`);
+    insights.push(`O cliente com maior número de rechamadas foi ${kpis.clienteComMaisRecalls.nome} com ${kpis.clienteComMaisRecalls.quantidade} ordens de recall.`);
   }
   if (kpis.tecnicoComMaisRecalls.quantidade > 0) {
-    insights.push(`O técnico com maior número de rechamadas foi ${kpis.tecnicoComMaisRecalls.nome} com ${kpis.tecnicoComMaisRecalls.quantidade} atendimentos repetidos.`);
+    insights.push(`O técnico com maior número de rechamadas foi ${kpis.tecnicoComMaisRecalls.nome} com ${kpis.tecnicoComMaisRecalls.quantidade} atendimentos de recall.`);
   }
   if (categories.length > 0) {
     insights.push(`A categoria mais recorrente em rechamadas foi ${categories[0].categoria} com ${categories[0].recalls} ocorrências.`);
   }
-  const clientesComRecalls = recalls.length;
-  if (clientesComRecalls > 0) {
-    insights.push(`${clientesComRecalls} clientes necessitaram de múltiplos atendimentos no período analisado.`);
+  const totalRecallOrders = kpis.totalRecalls;
+  if (totalRecallOrders > 0) {
+    insights.push(`${totalRecallOrders} ordens foram identificadas como rechamadas baseadas na análise sequencial de categorias.`);
   }
   return insights;
 }

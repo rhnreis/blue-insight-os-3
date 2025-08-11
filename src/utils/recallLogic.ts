@@ -11,6 +11,14 @@ import { parse } from 'date-fns';
  * - Uses DATA_ABERTURA + HORA_ABERTURA for temporal ordering
  * - Dynamic window = (endDate - startDate + 1) days
  * - Supports cascading recalls (a recall can trigger another recall)
+ * 
+ * Example scenario:
+ * 1. ATIVACAO on 01/01 09:00 (GATILHO)
+ * 2. SUPORTE NIVEL 1 on 02/01 14:30 (SUBSEQUENTE) -> This is a RECALL
+ * 3. OSCILACAO on 03/01 16:15 (SUBSEQUENTE) -> This could also be a RECALL if within window
+ * 
+ * Non-recall scenario:
+ * 1. RECOLHIMENTO on 01/01 10:00 (SUBSEQUENTE without previous GATILHO) -> NOT a recall
  */
 
 // Category sets for recall detection (normalized)
@@ -138,6 +146,12 @@ export interface DateFilter {
  * @param orders - Array of service orders
  * @param dateFilter - Date range filter for recall candidates
  * @returns RecallAnalysis object with recall mappings and statistics
+ * 
+ * Backward compatibility:
+ * - If HORA_ABERTURA is missing, defaults to 00:00:00
+ * - If COD_SERVICO_CLIENTE is missing, uses COD_CLIENTE as fallback
+ * - If DATA_ABERTURA cannot be parsed, order is skipped for recall analysis
+ * - Gracefully handles malformed date formats with fallback parsing
  */
 export function computeRecalls(orders: ServiceOrder[], dateFilter: DateFilter): RecallAnalysis {
   const recallsByClient = new Map<string, RecallResult[]>();
