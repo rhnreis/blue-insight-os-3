@@ -1,11 +1,13 @@
 export interface ServiceOrder {
   COD_SUPORTE: number;
   COD_CLIENTE: number;
+  COD_SERVICO_CLIENTE?: number; // Optional for backward compatibility
   NOME_CLIENTE: string;
   BAIRRO: string;
   CIDADE: string;
   CATEGORIA: string;
   DATA_ABERTURA: string;
+  HORA_ABERTURA?: string; // Optional for backward compatibility
   DATA_FECHAMENTO: string;
   TECNICO: string;
 }
