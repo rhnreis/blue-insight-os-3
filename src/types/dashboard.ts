@@ -1,13 +1,30 @@
 export interface ServiceOrder {
   COD_SUPORTE: number;
   COD_CLIENTE: number;
+  COD_SERVICO?: number;
+  COD_SERVICO_CLIENTE?: number;
   NOME_CLIENTE: string;
+  ENDERECO?: string;
+  NUMERO?: string;
+  COMPLEMENTO?: string;
   BAIRRO: string;
   CIDADE: string;
+  ESTADO?: string;
   CATEGORIA: string;
-  DATA_ABERTURA: string;
-  DATA_FECHAMENTO: string;
+  SUBCATEGORIA?: string;
+  DATA_ABERTURA: string; // valor original
+  HORA_ABERTURA?: string;
+  DATA_FECHAMENTO: string; // originalmente DATA_ENCERRAMENTO no arquivo
+  HORA_FECHAMENTO?: string;
   TECNICO: string;
+  TECNICO_AUXILIAR?: string;
+  DEFEITO?: string;
+  TIPO_ATENDIMENTO?: string;
+  OPERADOR?: string;
+  NOTA?: string | number;
+  BASE?: string;
+  RawDateOpen?: Date; // calculada
+  RawDateClose?: Date; // calculada
 }
 
 export interface ClientRecall {

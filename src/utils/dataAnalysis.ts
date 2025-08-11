@@ -1,22 +1,61 @@
 import { ServiceOrder, ClientRecall, TechnicianStats, CategoryStats, DashboardKPIs, DashboardFilters } from '@/types/dashboard';
 import { parse } from 'date-fns';
 
-export function parseExcelData(data: any[]): ServiceOrder[] {
-  return data.map(row => ({
-    COD_SUPORTE: Number(row.COD_SUPORTE),
-    COD_CLIENTE: Number(row.COD_CLIENTE),
-    NOME_CLIENTE: String(row.NOME_CLIENTE || ''),
-    BAIRRO: String(row.BAIRRO || ''),
-    CIDADE: String(row.CIDADE || ''),
-    CATEGORIA: String(row.CATEGORIA || ''),
-    DATA_ABERTURA: row.DATA_ABERTURA,
-    DATA_FECHAMENTO: row.DATA_FECHAMENTO,
-    TECNICO: String(row.TECNICO || '')
-  }));
+export function parseImportedData(data: Record<string, unknown>[]): ServiceOrder[] {
+  return data.map(row => {
+    // Normalize headers - handle common variations
+    const normalizedRow: Record<string, unknown> = {};
+    Object.keys(row).forEach(key => {
+      const normalizedKey = key.trim()
+        .replace(/\s+/g, '_')
+        .toUpperCase()
+        .replace(/DATA_ENCERRAMENTO/g, 'DATA_FECHAMENTO');
+      normalizedRow[normalizedKey] = row[key];
+    });
+
+    // Parse dates and times
+    const rawDateOpen = parseDateTime(
+      normalizedRow.DATA_ABERTURA, 
+      normalizedRow.HORA_ABERTURA
+    );
+    const rawDateClose = parseDateTime(
+      normalizedRow.DATA_FECHAMENTO, 
+      normalizedRow.HORA_FECHAMENTO
+    );
+
+    return {
+      COD_SUPORTE: Number(normalizedRow.COD_SUPORTE),
+      COD_CLIENTE: Number(normalizedRow.COD_CLIENTE),
+      COD_SERVICO: normalizedRow.COD_SERVICO ? Number(normalizedRow.COD_SERVICO) : undefined,
+      COD_SERVICO_CLIENTE: normalizedRow.COD_SERVICO_CLIENTE ? Number(normalizedRow.COD_SERVICO_CLIENTE) : undefined,
+      NOME_CLIENTE: String(normalizedRow.NOME_CLIENTE || ''),
+      ENDERECO: normalizedRow.ENDERECO ? String(normalizedRow.ENDERECO) : undefined,
+      NUMERO: normalizedRow.NUMERO ? String(normalizedRow.NUMERO) : undefined,
+      COMPLEMENTO: normalizedRow.COMPLEMENTO ? String(normalizedRow.COMPLEMENTO) : undefined,
+      BAIRRO: String(normalizedRow.BAIRRO || ''),
+      CIDADE: String(normalizedRow.CIDADE || ''),
+      ESTADO: normalizedRow.ESTADO ? String(normalizedRow.ESTADO) : undefined,
+      CATEGORIA: String(normalizedRow.CATEGORIA || ''),
+      SUBCATEGORIA: normalizedRow.SUBCATEGORIA ? String(normalizedRow.SUBCATEGORIA) : undefined,
+      DATA_ABERTURA: normalizedRow.DATA_ABERTURA,
+      HORA_ABERTURA: normalizedRow.HORA_ABERTURA ? String(normalizedRow.HORA_ABERTURA) : undefined,
+      DATA_FECHAMENTO: normalizedRow.DATA_FECHAMENTO,
+      HORA_FECHAMENTO: normalizedRow.HORA_FECHAMENTO ? String(normalizedRow.HORA_FECHAMENTO) : undefined,
+      TECNICO: String(normalizedRow.TECNICO || ''),
+      TECNICO_AUXILIAR: normalizedRow.TECNICO_AUXILIAR ? String(normalizedRow.TECNICO_AUXILIAR) : undefined,
+      DEFEITO: normalizedRow.DEFEITO ? String(normalizedRow.DEFEITO) : undefined,
+      TIPO_ATENDIMENTO: normalizedRow.TIPO_ATENDIMENTO ? String(normalizedRow.TIPO_ATENDIMENTO) : undefined,
+      OPERADOR: normalizedRow.OPERADOR ? String(normalizedRow.OPERADOR) : undefined,
+      NOTA: normalizedRow.NOTA !== undefined ? normalizedRow.NOTA : undefined,
+      BASE: normalizedRow.BASE ? String(normalizedRow.BASE) : undefined,
+      RawDateOpen: rawDateOpen,
+      RawDateClose: rawDateClose
+    };
+  });
 }
 
-// Função ajustada para lidar com vários formatos e números do Excel
-export function parseDate(dateValue: any): Date | null {
+// Enhanced date parsing function that handles both dates and times
+export function parseDate(dateValue: unknown): Date | null {
   try {
     if (!dateValue) return null;
 
@@ -29,7 +68,7 @@ export function parseDate(dateValue: any): Date | null {
 
     const str = String(dateValue).trim();
 
-    const formats = ['dd/MM/yyyy', 'yyyy-MM-dd', 'MM/dd/yyyy'];
+    const formats = ['dd/MM/yyyy HH:mm:ss', 'dd/MM/yyyy HH:mm', 'dd/MM/yyyy', 'yyyy-MM-dd HH:mm:ss', 'yyyy-MM-dd HH:mm', 'yyyy-MM-dd', 'MM/dd/yyyy HH:mm:ss', 'MM/dd/yyyy HH:mm', 'MM/dd/yyyy'];
     for (const format of formats) {
       const parsed = parse(str, format, new Date());
       if (!isNaN(parsed.getTime())) {
@@ -42,6 +81,29 @@ export function parseDate(dateValue: any): Date | null {
     return isNaN(fallback.getTime()) ? null : fallback;
   } catch {
     return null;
+  }
+}
+
+// Function to combine date and time strings
+export function parseDateTime(dateValue: unknown, timeValue?: unknown): Date | null {
+  try {
+    if (!dateValue) return null;
+
+    // If we have separate date and time values, combine them
+    if (timeValue) {
+      const dateStr = String(dateValue).trim();
+      const timeStr = String(timeValue).trim();
+      
+      // Try to parse combined date and time
+      const combinedStr = `${dateStr} ${timeStr}`;
+      const combined = parseDate(combinedStr);
+      if (combined) return combined;
+    }
+
+    // Fallback to just parsing the date
+    return parseDate(dateValue);
+  } catch {
+    return parseDate(dateValue);
   }
 }
 
@@ -66,7 +128,7 @@ export function filterServiceOrders(
       return matchBairro && matchCidade && matchTecnico && matchCategoria;
     }
 
-    const dataFechamento = parseDate(order.DATA_FECHAMENTO);
+    const dataFechamento = order.RawDateClose || parseDate(order.DATA_FECHAMENTO);
 
     if (!dataFechamento || isNaN(dataFechamento.getTime())) {
       console.warn(`Data inválida na ordem ${order.COD_SUPORTE}: ${order.DATA_FECHAMENTO}`);
@@ -115,8 +177,8 @@ export function analyzeRecalls(orders: ServiceOrder[]): ClientRecall[] {
       nomeCliente: ordens[0].NOME_CLIENTE,
       totalOrdens: ordens.length,
       ordens: ordens.sort((a, b) => {
-        const dateA = parseDate(a.DATA_FECHAMENTO);
-        const dateB = parseDate(b.DATA_FECHAMENTO);
+        const dateA = a.RawDateClose || parseDate(a.DATA_FECHAMENTO);
+        const dateB = b.RawDateClose || parseDate(b.DATA_FECHAMENTO);
         if (!dateA || !dateB) return 0;
         return dateA.getTime() - dateB.getTime();
       })
@@ -223,7 +285,7 @@ export function analyzeRecallsByDate(recalls: ClientRecall[]): { data: string; r
   const dateMap = new Map<string, number>();
   recalls.forEach(recall => {
     recall.ordens.forEach(ordem => {
-      const data = parseDate(ordem.DATA_FECHAMENTO);
+      const data = ordem.RawDateClose || parseDate(ordem.DATA_FECHAMENTO);
       if (data && !isNaN(data.getTime())) {
         const dateKey = data.toISOString().split('T')[0];
         dateMap.set(dateKey, (dateMap.get(dateKey) || 0) + 1);
@@ -264,7 +326,7 @@ export function analyzeRecallsByDateFromOrders(filteredOrders: ServiceOrder[], r
   const dateMap = new Map<string, number>();
   filteredOrders.forEach(ordem => {
     if (recallOrderIds.has(ordem.COD_SUPORTE)) {
-      const data = parseDate(ordem.DATA_FECHAMENTO);
+      const data = ordem.RawDateClose || parseDate(ordem.DATA_FECHAMENTO);
       if (data && !isNaN(data.getTime())) {
         const dateKey = data.toISOString().split('T')[0];
         dateMap.set(dateKey, (dateMap.get(dateKey) || 0) + 1);
@@ -279,7 +341,7 @@ export function analyzeRecallsByDateFromOrders(filteredOrders: ServiceOrder[], r
 export function analyzeRecallsByMonth(orders: ServiceOrder[], recalls: ClientRecall[]): { mes: string; totalOrdens: number; rechamadas: number; percentual: number }[] {
   const monthMap = new Map<string, { total: number; recalls: number }>();
   orders.forEach(order => {
-    const data = parseDate(order.DATA_FECHAMENTO);
+    const data = order.RawDateClose || parseDate(order.DATA_FECHAMENTO);
     if (data && !isNaN(data.getTime())) {
       const monthKey = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
       if (!monthMap.has(monthKey)) {
@@ -290,7 +352,7 @@ export function analyzeRecallsByMonth(orders: ServiceOrder[], recalls: ClientRec
   });
   recalls.forEach(recall => {
     recall.ordens.forEach(ordem => {
-      const data = parseDate(ordem.DATA_FECHAMENTO);
+      const data = ordem.RawDateClose || parseDate(ordem.DATA_FECHAMENTO);
       if (data && !isNaN(data.getTime())) {
         const monthKey = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
         if (monthMap.has(monthKey)) {
@@ -345,10 +407,67 @@ export function generateInsights(kpis: DashboardKPIs, recalls: ClientRecall[], c
 export function getAvailableDates(orders: ServiceOrder[]): Date[] {
   const dates = new Set<string>();
   orders.forEach(order => {
-    const fechamento = parseDate(order.DATA_FECHAMENTO);
+    const fechamento = order.RawDateClose || parseDate(order.DATA_FECHAMENTO);
     if (fechamento && !isNaN(fechamento.getTime())) {
       dates.add(fechamento.toISOString().split('T')[0]);
     }
   });
   return Array.from(dates).sort().map(dateStr => new Date(dateStr));
+}
+
+// New function to compute recalls based on time windows
+export function computeRecalls(orders: ServiceOrder[], janelaMinutos: number = 1440): ServiceOrder[] {
+  if (orders.length === 0) return [];
+
+  // Group orders by client and optionally by service code
+  const clientGroups = new Map<string, ServiceOrder[]>();
+  
+  orders.forEach(order => {
+    // Use COD_CLIENTE and COD_SERVICO_CLIENTE as grouping key when available
+    const groupKey = order.COD_SERVICO_CLIENTE 
+      ? `${order.COD_CLIENTE}_${order.COD_SERVICO_CLIENTE}`
+      : String(order.COD_CLIENTE);
+      
+    if (!clientGroups.has(groupKey)) {
+      clientGroups.set(groupKey, []);
+    }
+    clientGroups.get(groupKey)!.push(order);
+  });
+
+  const recallOrders: ServiceOrder[] = [];
+
+  // Analyze each client group for recalls
+  clientGroups.forEach(clientOrders => {
+    // Sort orders by close date
+    const sortedOrders = clientOrders
+      .filter(order => {
+        const closeDate = order.RawDateClose || parseDate(order.DATA_FECHAMENTO);
+        return closeDate && !isNaN(closeDate.getTime());
+      })
+      .sort((a, b) => {
+        const dateA = a.RawDateClose || parseDate(a.DATA_FECHAMENTO);
+        const dateB = b.RawDateClose || parseDate(b.DATA_FECHAMENTO);
+        return (dateA?.getTime() || 0) - (dateB?.getTime() || 0);
+      });
+
+    // Check each order against the previous one for recalls
+    for (let i = 1; i < sortedOrders.length; i++) {
+      const currentOrder = sortedOrders[i];
+      const previousOrder = sortedOrders[i - 1];
+
+      const currentOpenDate = currentOrder.RawDateOpen || parseDate(currentOrder.DATA_ABERTURA);
+      const previousCloseDate = previousOrder.RawDateClose || parseDate(previousOrder.DATA_FECHAMENTO);
+
+      if (currentOpenDate && previousCloseDate) {
+        const diffMinutes = (currentOpenDate.getTime() - previousCloseDate.getTime()) / (1000 * 60);
+        
+        // If the time difference is within the window, mark as recall
+        if (diffMinutes >= 0 && diffMinutes <= janelaMinutos) {
+          recallOrders.push(currentOrder);
+        }
+      }
+    }
+  });
+
+  return recallOrders;
 }
