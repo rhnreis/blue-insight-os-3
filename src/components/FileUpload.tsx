@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import * as XLSX from 'xlsx';
 import { ServiceOrder } from '@/types/dashboard';
-import { parseExcelData } from '@/utils/dataAnalysis';
+import { parseImportedData } from '@/utils/dataAnalysis';
 
 interface FileUploadProps {
   onDataLoaded: (data: ServiceOrder[]) => void;
@@ -20,8 +20,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded, isLoading }) => {
     const file = files[0];
     if (!file) return;
 
-    if (!file.name.match(/\.(xlsx|xls)$/)) {
-      setError('Por favor, selecione um arquivo Excel (.xlsx ou .xls)');
+    if (!file.name.match(/\.(xlsx|xls|csv)$/)) {
+      setError('Por favor, selecione um arquivo Excel (.xlsx, .xls) ou CSV (.csv)');
       return;
     }
 
@@ -31,10 +31,33 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded, isLoading }) => {
     reader.onload = (e) => {
       try {
         const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        let jsonData: Record<string, unknown>[];
+
+        if (file.name.match(/\.csv$/)) {
+          // Handle CSV files
+          const csvText = data as string;
+          const lines = csvText.split('\n').filter(line => line.trim());
+          if (lines.length === 0) {
+            setError('O arquivo CSV está vazio');
+            return;
+          }
+          
+          const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+          jsonData = lines.slice(1).map(line => {
+            const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+            const row: Record<string, unknown> = {};
+            headers.forEach((header, index) => {
+              row[header] = values[index] || '';
+            });
+            return row;
+          });
+        } else {
+          // Handle Excel files
+          const workbook = XLSX.read(data, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          jsonData = XLSX.utils.sheet_to_json(worksheet);
+        }
 
         if (jsonData.length === 0) {
           setError('O arquivo está vazio ou não contém dados válidos');
@@ -43,7 +66,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded, isLoading }) => {
 
         // Validar se contém as colunas necessárias
         const requiredColumns = ['COD_SUPORTE', 'COD_CLIENTE', 'NOME_CLIENTE', 'CATEGORIA', 'TECNICO'];
-        const firstRow = jsonData[0] as any;
+        const firstRow = jsonData[0] as Record<string, unknown>;
         const missingColumns = requiredColumns.filter(col => !(col in firstRow));
 
         if (missingColumns.length > 0) {
@@ -51,7 +74,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded, isLoading }) => {
           return;
         }
 
-        const parsedData = parseExcelData(jsonData);
+        const parsedData = parseImportedData(jsonData);
         onDataLoaded(parsedData);
       } catch (err) {
         setError('Erro ao processar o arquivo. Verifique se o formato está correto.');
@@ -59,7 +82,11 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded, isLoading }) => {
       }
     };
 
-    reader.readAsBinaryString(file);
+    if (file.name.match(/\.csv$/)) {
+      reader.readAsText(file, 'UTF-8');
+    } else {
+      reader.readAsBinaryString(file);
+    }
   }, [onDataLoaded]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -107,14 +134,14 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded, isLoading }) => {
             <div className="space-y-2">
               <h3 className="text-lg font-semibold">Importar Dados de Ordens de Serviço</h3>
               <p className="text-muted-foreground">
-                Arraste e solte seu arquivo Excel aqui ou clique para selecionar
+                Arraste e solte seu arquivo Excel ou CSV aqui ou clique para selecionar
               </p>
             </div>
 
             <div className="flex flex-col items-center space-y-2">
               <input
                 type="file"
-                accept=".xlsx,.xls"
+                accept=".xlsx,.xls,.csv"
                 onChange={handleFileSelect}
                 className="hidden"
                 id="file-upload"
@@ -135,7 +162,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded, isLoading }) => {
               </label>
               
               <p className="text-xs text-muted-foreground">
-                Formatos aceitos: .xlsx, .xls
+                Formatos aceitos: .xlsx, .xls, .csv
               </p>
             </div>
           </div>
@@ -153,6 +180,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded, isLoading }) => {
         <CardContent className="p-4">
           <h4 className="font-medium mb-2">Estrutura esperada do arquivo:</h4>
           <div className="text-sm text-muted-foreground space-y-1">
+            <p><strong>Campos obrigatórios:</strong></p>
             <p>• <strong>COD_SUPORTE:</strong> Código único da ordem de serviço</p>
             <p>• <strong>COD_CLIENTE:</strong> Código único do cliente</p>
             <p>• <strong>NOME_CLIENTE:</strong> Nome completo do cliente</p>
@@ -162,6 +190,16 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded, isLoading }) => {
             <p>• <strong>DATA_ABERTURA:</strong> Data de abertura da OS (dd/mm/aaaa)</p>
             <p>• <strong>DATA_FECHAMENTO:</strong> Data de fechamento da OS (dd/mm/aaaa)</p>
             <p>• <strong>TECNICO:</strong> Nome do técnico responsável</p>
+            
+            <p className="mt-2"><strong>Campos opcionais (para análise expandida):</strong></p>
+            <p>• <strong>COD_SERVICO, COD_SERVICO_CLIENTE:</strong> Códigos de serviço</p>
+            <p>• <strong>SUBCATEGORIA:</strong> Subcategoria da ordem</p>
+            <p>• <strong>HORA_ABERTURA, HORA_FECHAMENTO:</strong> Horários (HH:mm:ss)</p>
+            <p>• <strong>ENDERECO, NUMERO, COMPLEMENTO, ESTADO:</strong> Endereço completo</p>
+            <p>• <strong>TECNICO_AUXILIAR:</strong> Técnico auxiliar</p>
+            <p>• <strong>DEFEITO, TIPO_ATENDIMENTO, OPERADOR, NOTA, BASE:</strong> Detalhes adicionais</p>
+            
+            <p className="mt-2 font-medium">Formatos suportados: Excel (.xlsx, .xls) e CSV (.csv)</p>
           </div>
         </CardContent>
       </Card>
